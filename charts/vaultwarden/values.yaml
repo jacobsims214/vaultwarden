@@ -673,19 +673,19 @@ logging:
   logFile: ""
 
 ## Token for the admin interface, preferably an Argon2 PCH string
+## IMPORTANT: Use existingSecret for production! Do not commit secrets to version control.
+## Create the secret with: ./tools/apps/create-vaultwarden-admin-secret.sh
 adminToken:
   ## @param adminToken.existingSecret Specify an existing Kubernetes secret containing the admin token. Also set adminToken.existingSecretKey.
-  ## Example: admincreds_secret
   ##
-  existingSecret: ""
+  existingSecret: "vaultwarden-admin"
   ## @param adminToken.existingSecretKey When using adminToken.existingSecret, specify the key containing the token.
-  ## Example: ADMIN_TOKEN
   ##
-  existingSecretKey: ""
+  existingSecretKey: "ADMIN_TOKEN"
   ## @param adminToken.value Plain or argon2 string containing the admin token.
-  ## This example is the argon2 has of "R@ndomTokenString" (no quotes).
+  ## Leave empty when using existingSecret (recommended for production).
   ##
-  value: "$argon2id$v=19$m=19456,t=2,p=1$Vkx1VkE4RmhDMUhwNm9YVlhPQkVOZk1Yc1duSDdGRVYzd0Y5ZkgwaVg0Yz0$PK+h1ANCbzzmEKaiQfCjWw+hWFaMKvLhG2PjRanH5Kk"
+  value: ""
 
 ## @param adminRateLimitSeconds Number of seconds, on average, between admin login requests from the same IP address before rate limiting kicks in.
 ##

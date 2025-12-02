@@ -209,6 +209,122 @@ service:
 
 Detailed configuration options can be found in the [Exposure Settings](#exposure-settings) section.
 
+### Tailscale Funnel
+
+[Tailscale Funnel](https://tailscale.com/kb/1223/funnel) allows you to expose Vaultwarden to the public internet securely through Tailscale's network, with automatic HTTPS certificates. This is ideal for self-hosted setups where you don't want to expose your home network or deal with port forwarding.
+
+#### Prerequisites
+
+1. A [Tailscale account](https://tailscale.com/)
+2. Funnel enabled in your Tailscale admin console
+3. An auth key with the appropriate tags
+
+#### Step 1: Configure Tailscale ACLs
+
+In your [Tailscale ACL editor](https://login.tailscale.com/admin/acls), add the following to enable Funnel for your Vaultwarden node:
+
+```json
+{
+  "tagOwners": {
+    "tag:vaultwarden": ["autogroup:admin"]
+  },
+  "nodeAttrs": [
+    {
+      "target": ["tag:vaultwarden"],
+      "attr": ["funnel"]
+    }
+  ]
+}
+```
+
+#### Step 2: Create a Tailscale Auth Key
+
+1. Go to [Tailscale Settings > Keys](https://login.tailscale.com/admin/settings/keys)
+2. Generate a new auth key with:
+   - **Reusable**: Yes (recommended for Kubernetes)
+   - **Tags**: `tag:vaultwarden`
+
+#### Step 3: Create the Kubernetes Secret
+
+Use the provided script or create manually:
+
+```bash
+# Using the provided script
+./tools/apps/create-tailscale-secret.sh "tskey-auth-xxxxx-yyyyy"
+
+# Or manually
+kubectl create secret generic tailscale-auth \
+  --namespace vault \
+  --from-literal=TS_AUTHKEY="tskey-auth-xxxxx-yyyyy"
+```
+
+#### Step 4: Configure values.yaml
+
+```yaml
+# Your public domain (CNAME this to your Tailscale hostname)
+domain: "https://vault.example.com"
+
+# Tailscale configuration
+tailscale:
+  enabled: true
+  hostname: "vault"                    # Machine name on Tailscale
+  domain: "your-tailnet.ts.net"        # Your Tailscale domain
+  tags: "tag:vaultwarden"              # Must match ACL tags
+  authSecretName: "tailscale-auth"     # Secret created in Step 3
+  proxyPort: 8080                      # Vaultwarden's internal port
+  stateSize: "100Mi"                   # Persistent storage for Tailscale state
+
+# Use ClusterIP since Tailscale handles external access
+service:
+  type: "ClusterIP"
+```
+
+#### Step 5: Deploy
+
+```bash
+helm install vaultwarden ./charts/vaultwarden -n vault
+```
+
+#### Step 6: Set up DNS (Optional)
+
+For a user-friendly URL, create a CNAME record pointing to your Tailscale hostname:
+
+```
+vault.example.com  CNAME  vault.your-tailnet.ts.net
+```
+
+#### Verifying the Setup
+
+Check Tailscale status:
+
+```bash
+# Check if Tailscale is connected
+kubectl exec -n vault deployment/vaultwarden -c tailscale -- tailscale status
+
+# Check serve/funnel configuration
+kubectl exec -n vault deployment/vaultwarden -c tailscale -- tailscale serve status
+
+# Check funnel status
+kubectl exec -n vault deployment/vaultwarden -c tailscale -- tailscale funnel status
+```
+
+Your Vaultwarden instance will be accessible at:
+- **Tailscale URL**: `https://vault.your-tailnet.ts.net`
+- **Custom domain**: `https://vault.example.com` (if CNAME configured)
+
+#### Tailscale Configuration Reference
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `tailscale.enabled` | Enable Tailscale sidecar | `true` |
+| `tailscale.image` | Tailscale container image | `tailscale/tailscale:v1.76.1` |
+| `tailscale.hostname` | Machine hostname on Tailscale network | `vault` |
+| `tailscale.domain` | Your Tailscale domain (tailnet name) | `""` |
+| `tailscale.tags` | Tailscale ACL tags | `tag:vaultwarden` |
+| `tailscale.authSecretName` | Name of secret containing TS_AUTHKEY | `tailscale-auth` |
+| `tailscale.proxyPort` | Port to proxy traffic to | `8080` |
+| `tailscale.stateSize` | Size of persistent volume for state | `100Mi` |
+
 ## High Availability
 
 Set the following to run multiple deployment/statefulset replicas:
@@ -227,20 +343,59 @@ service:
 
 ### Admin page
 
-An insecure string token can be generated with: `openssl rand -base64 48` and can be used for the admin token. However, from v1.28.0 and later, it is now possible to pass a hashed value to the admin token:
+The admin panel is accessible at `https://your-domain/admin` and requires an admin token for authentication.
+
+**Important:** Never commit admin tokens to version control. Use Kubernetes secrets instead.
+
+#### Using the provided script (recommended)
 
 ```bash
-echo -n "R@ndomTokenString" | argon2 "$(openssl rand -base64 32)" -e -id -k 19456 -t 2 -p 1
+# Generate a random token and create the secret
+./tools/apps/create-vaultwarden-admin-secret.sh
+
+# Or provide your own token
+./tools/apps/create-vaultwarden-admin-secret.sh "YourSecureTokenHere"
 ```
 
-Please see [this](https://github.com/dani-garcia/vaultwarden/wiki/Enabling-admin-page#secure-the-admin_token) guide for more information.
+The script will display the generated token - **save this somewhere secure!**
+
+#### Manual secret creation
+
+```bash
+# Generate a secure token
+ADMIN_TOKEN=$(openssl rand -base64 48)
+echo "Save this token: $ADMIN_TOKEN"
+
+# Create the secret
+kubectl create secret generic vaultwarden-admin \
+  --namespace vault \
+  --from-literal=ADMIN_TOKEN="$ADMIN_TOKEN"
+```
+
+#### Configuration
+
+The chart is pre-configured to use the `vaultwarden-admin` secret:
 
 ```yaml
 adminToken:
-  value: "khit9gYQV6ax9LKTTm+s6QbZi5oiuR+3s1PEn9q3IRmCl9IQn7LmBpmFCOYTb7Mr"
+  existingSecret: "vaultwarden-admin"
+  existingSecretKey: "ADMIN_TOKEN"
+  value: ""  # Leave empty when using existingSecret
 ```
 
-You can also [disable](https://github.com/dani-garcia/vaultwarden/wiki/Disable-admin-token) the admin token by passing `--set adminToken=null` to `helm`. Doing so will pass the disable the authentication to the admin page. Do this if you know what you are doing.
+#### Using Argon2 hashed tokens
+
+For additional security, you can hash your token with Argon2:
+
+```bash
+echo -n "YourSecureToken" | argon2 "$(openssl rand -base64 32)" -e -id -k 19456 -t 2 -p 1
+```
+
+Then create the secret with the hashed value. Please see [this guide](https://github.com/dani-garcia/vaultwarden/wiki/Enabling-admin-page#secure-the-admin_token) for more information.
+
+#### Disabling the admin panel
+
+You can [disable](https://github.com/dani-garcia/vaultwarden/wiki/Disable-admin-token) the admin panel entirely by passing `--set adminToken=null` to `helm`. Only do this if you know what you are doing.
 
 ### Service account
 
@@ -625,3 +780,16 @@ helm -n $NAMESPACE uninstall $RELEASE_NAME
 | `ingress.tlsSecret`               | Kubernetes secret containing the SSL certificate when using the "nginx" class. | `""`                 |
 | `ingress.nginxAllowList`          | Comma-separated list of IP addresses and subnets to allow.                     | `""`                 |
 | `ingress.customHeadersConfigMap`  | ConfigMap containing custom headers to be added to the ingress.                | `{}`                 |
+
+### Tailscale Funnel settings
+
+| Name                       | Description                                              | Value                          |
+| -------------------------- | -------------------------------------------------------- | ------------------------------ |
+| `tailscale.enabled`        | Enable Tailscale sidecar for Funnel access               | `true`                         |
+| `tailscale.image`          | Tailscale container image                                | `tailscale/tailscale:v1.76.1`  |
+| `tailscale.hostname`       | Machine hostname on Tailscale network                    | `vault`                        |
+| `tailscale.domain`         | Your Tailscale domain (tailnet name)                     | `""`                           |
+| `tailscale.tags`           | Tailscale ACL tags (comma-separated)                     | `tag:vaultwarden`              |
+| `tailscale.authSecretName` | Name of the secret containing TS_AUTHKEY                 | `tailscale-auth`               |
+| `tailscale.proxyPort`      | Port to proxy traffic to (Vaultwarden's port)            | `8080`                         |
+| `tailscale.stateSize`      | Size of persistent volume for Tailscale state            | `100Mi`                        |
