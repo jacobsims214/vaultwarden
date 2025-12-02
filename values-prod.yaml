@@ -1,0 +1,45 @@
+# Production values for Vaultwarden deployment
+# IP: 192.168.8.55 | Domain: vault.simstech.cloud
+# Namespace: vault
+
+# Domain configuration - required for proper redirects
+domain: "https://vault.simstech.cloud"
+
+# Cilium LoadBalancer configuration
+service:
+  type: "LoadBalancer"
+  loadBalancerIP: "192.168.8.55"
+
+# PostgreSQL Database - uses existing secret with full connection URI
+database:
+  type: "postgresql"
+  existingSecret: "vault-psql-cluster-app"
+  existingSecretKey: "fqdn-uri"
+
+# Persistent storage for vault data
+storage:
+  data:
+    name: "vaultwarden-data"
+    size: "10Gi"
+    path: "/data"
+
+# Security settings
+signupsAllowed: false
+invitationsAllowed: true
+
+# Resource limits
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+# Admin token - CHANGE THIS before deploying!
+# Generate a secure token with:
+#   echo -n "YourSecretToken" | argon2 $(openssl rand -base64 32) -e -id -k 19456 -t 2 -p 1
+# Or use: https://argon2.online/ with type Argon2id
+# adminToken:
+#   value: "$argon2id$v=19$m=19456,t=2,p=1$..."
+

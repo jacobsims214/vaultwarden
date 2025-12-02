@@ -742,6 +742,11 @@ service:
   ## @param service.type Service type
   ##
   type: "ClusterIP"
+  ## @param service.loadBalancerIP LoadBalancer IP address
+  ## For Cilium LB-IPAM, specify an IP from your pool (e.g., 192.168.8.50-99)
+  ## Leave empty to auto-assign from pool
+  ##
+  loadBalancerIP: ""
   ## @param service.annotations Additional annotations for the vaultwarden service
   ##
   annotations: {}
