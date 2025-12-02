@@ -763,40 +763,43 @@ duo:
 ##
 smtp:
   ## @param smtp.existingSecret Name of an existing secret containing the SMTP username and password. Also set smtp.username.existingSecretKey and smtp.password.existingSecretKey.
+  ## Create with: ./tools/apps/create-smtp-secret.sh
   ##
-  existingSecret: ""
+  existingSecret: "vaultwarden-smtp"
   ## @param smtp.host SMTP host
   ##
-  host: ""
+  host: "smtp.sendgrid.net"
   ## @param smtp.security SMTP Encryption method
   ## Possible values:
   ##  - starttls: explicit TLS using ports 587 or 25
   ##  - force_tls: implicit TLS using port 465
   ##  - off: no encryption, using port 25, unless using STARTTLS
   ##
-  security: "starttls"
+  security: "force_tls"
   ## @param smtp.port SMTP port
   ##
-  port: 25
+  port: 465
   ## @param smtp.from SMTP sender email address
   ## Example: juan.delacruz@gmail.com
   ##
-  from: ""
+  from: "notification@simstech.cloud"
   ## @param smtp.fromName SMTP sender FROM
   ##
-  fromName: ""
+  fromName: "Vaultwarden"
   ## Username for SMTP authentication.
+  ## For SendGrid, username is always "apikey" (literal string)
   ##
   username:
     ## @param smtp.username.value Username string for the SMTP authentication.
     ## Example: juan
     ##
-    value: ""
+    value: "apikey"
     ## @param smtp.username.existingSecretKey When using an existing secret, specify the key which contains the username.
     ## Example: SMTP_USERNAME
     ##
     existingSecretKey: ""
   ## Password for SMTP authentication.
+  ## For SendGrid, this is your API key
   ##
   password:
     ## @param smtp.password.value Password string for the SMTP authentication.
@@ -806,12 +809,12 @@ smtp:
     ## @param smtp.password.existingSecretKey When using an existing secret, specify the key which contains the password.
     ## Example: SMTP_PASSWORD
     ##
-    existingSecretKey: ""
+    existingSecretKey: "SMTP_PASSWORD"
   ## @param smtp.authMechanism SMTP authentication mechanism
   ## Possible values: "Plain", "Login", "Xoauth2"
   ## Multiple options need to be separated by a comma. (not tested)
   ##
-  authMechanism: "Plain"
+  authMechanism: "Login"
   ## @param smtp.acceptInvalidHostnames Accept Invalid Hostnames
   ##
   acceptInvalidHostnames: "false"
