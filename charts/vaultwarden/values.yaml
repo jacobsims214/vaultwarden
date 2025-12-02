@@ -248,6 +248,30 @@ extraObjects:
       resources:
         requests:
           storage: "{{ .Values.tailscale.stateSize }}"
+  # Tailscale RBAC - Role for managing secrets
+  - apiVersion: rbac.authorization.k8s.io/v1
+    kind: Role
+    metadata:
+      name: tailscale
+      namespace: "{{ .Release.Namespace }}"
+    rules:
+      - apiGroups: [""]
+        resources: ["secrets"]
+        verbs: ["create", "get", "update", "patch", "delete"]
+  # Tailscale RBAC - RoleBinding
+  - apiVersion: rbac.authorization.k8s.io/v1
+    kind: RoleBinding
+    metadata:
+      name: tailscale
+      namespace: "{{ .Release.Namespace }}"
+    subjects:
+      - kind: ServiceAccount
+        name: "{{ .Values.serviceAccount.name }}"
+        namespace: "{{ .Release.Namespace }}"
+    roleRef:
+      kind: Role
+      name: tailscale
+      apiGroup: rbac.authorization.k8s.io
 
 
 ## @section Reliability configuration
