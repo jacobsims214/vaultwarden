@@ -172,6 +172,41 @@ ingress:
 
 Visit [this](https://medium.com/@sreafterhours/deploy-vaultwarden-to-amazon-eks-using-terraform-terragrunt-and-helm-69a0a7396625) article for a tutorial for deploying an EKS cluster and then installing this chart.
 
+### Cilium LoadBalancer (LB-IPAM)
+
+When using [Cilium](https://cilium.io/) as your CNI with LB-IPAM enabled, you can expose Vaultwarden directly on your network with a dedicated IP address.
+
+Example configuration:
+
+```yaml
+domain: "https://vault.example.com"
+
+service:
+  type: "LoadBalancer"
+  loadBalancerIP: "192.168.8.55"
+```
+
+You can also let Cilium auto-assign an IP from your configured pool by leaving `loadBalancerIP` empty:
+
+```yaml
+service:
+  type: "LoadBalancer"
+  loadBalancerIP: ""
+```
+
+For advanced Cilium configurations, use service annotations:
+
+```yaml
+service:
+  type: "LoadBalancer"
+  loadBalancerIP: "192.168.8.55"
+  annotations:
+    # Request a specific IP from Cilium pool:
+    io.cilium/lb-ipam-ips: "192.168.8.55"
+    # Share IP across multiple services (different ports):
+    io.cilium/lb-ipam-sharing-key: "vaultwarden"
+```
+
 Detailed configuration options can be found in the [Exposure Settings](#exposure-settings) section.
 
 ## High Availability
@@ -571,6 +606,7 @@ helm -n $NAMESPACE uninstall $RELEASE_NAME
 | `rocket.port`                     | Rocket port                                                                    | `8080`               |
 | `rocket.workers`                  | Rocket number of workers                                                       | `10`                 |
 | `service.type`                    | Service type                                                                   | `ClusterIP`          |
+| `service.loadBalancerIP`          | LoadBalancer IP address (for Cilium LB-IPAM or cloud providers)                | `""`                 |
 | `service.annotations`             | Additional annotations for the vaultwarden service                             | `{}`                 |
 | `service.labels`                  | Additional labels for the service                                              | `{}`                 |
 | `service.ipFamilyPolicy`          | IP family policy for the service                                               | `SingleStack`        |
