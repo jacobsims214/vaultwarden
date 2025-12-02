@@ -220,7 +220,7 @@ containers:
     {{- with .Values.sidecars }}
     {{- tpl (toYaml .) $ | nindent 2 }}
     {{- end }}
-{{- if or (.Values.storage.existingVolumeClaim) (.Values.extraVolumes) }}
+{{- if or (.Values.storage.existingVolumeClaim) (.Values.extraVolumes) (.Values.storage.data) (.Values.storage.attachments) }}
 volumes:
 {{- with .Values.extraVolumes }}
 {{- tpl (toYaml .) $ | nindent 2 }}
@@ -229,6 +229,16 @@ volumes:
   - name: vaultwarden-data
     persistentVolumeClaim:
       claimName: {{ .claimName }}
+{{- end }}
+{{- with .Values.storage.data }}
+  - name: {{ .name }}
+    persistentVolumeClaim:
+      claimName: {{ .name }}
+{{- end }}
+{{- with .Values.storage.attachments }}
+  - name: {{ .name }}
+    persistentVolumeClaim:
+      claimName: {{ .name }}
 {{- end }}
 {{- end }}
 {{- if .Values.serviceAccount.create }}
