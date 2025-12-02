@@ -85,13 +85,64 @@ podLabels: {}
 ##
 initContainers: []
 
+## @section Tailscale Funnel Configuration
+## Exposes Vaultwarden via Tailscale Funnel for secure public access
+##
+tailscale:
+  ## @param tailscale.enabled Enable Tailscale sidecar
+  enabled: true
+  ## @param tailscale.image Tailscale container image
+  image: tailscale/tailscale:v1.76.1
+  ## @param tailscale.hostname Machine hostname on Tailscale network
+  hostname: "vault"
+  ## @param tailscale.domain Your Tailscale domain (tailnet name)
+  domain: "tail108d23.ts.net"
+  ## @param tailscale.tags Tailscale ACL tags (comma-separated)
+  tags: "tag:vaultwarden"
+  ## @param tailscale.authSecretName Name of the secret containing TS_AUTHKEY
+  authSecretName: "tailscale-auth"
+  ## @param tailscale.proxyPort Port to proxy traffic to (Vaultwarden's port)
+  proxyPort: 8080
+  ## @param tailscale.stateSize Size of persistent volume for Tailscale state
+  stateSize: "100Mi"
+
 ## @param sidecars extra containers running alongside the vaultwarden instance
 ##
-sidecars: []
+sidecars:
+  - name: tailscale
+    image: "{{ .Values.tailscale.image }}"
+    imagePullPolicy: IfNotPresent
+    env:
+      - name: TS_AUTHKEY
+        valueFrom:
+          secretKeyRef:
+            name: "{{ .Values.tailscale.authSecretName }}"
+            key: TS_AUTHKEY
+      - name: TS_STATE_DIR
+        value: "/var/lib/tailscale"
+      - name: TS_SERVE_CONFIG
+        value: "/config/serve.json"
+      - name: TS_USERSPACE
+        value: "true"
+      - name: TS_HOSTNAME
+        value: "{{ .Values.tailscale.hostname }}"
+      - name: TS_EXTRA_ARGS
+        value: "--advertise-tags={{ .Values.tailscale.tags }}"
+    volumeMounts:
+      - name: tailscale-state
+        mountPath: /var/lib/tailscale
+      - name: tailscale-config
+        mountPath: /config
 
 ## @param extraVolumes Optionally specify extra list of additional volumes
 ##
-extraVolumes: []
+extraVolumes:
+  - name: tailscale-state
+    persistentVolumeClaim:
+      claimName: "tailscale-state"
+  - name: tailscale-config
+    configMap:
+      name: "tailscale-serve-config"
 
 ## @param extraVolumeMounts Optionally specify extra list of additional volumeMounts
 ##
@@ -155,18 +206,48 @@ dnsConfig: {}
 enableServiceLinks: true
 
 ## Extra objects
-extraObjects: []
-  ## @param extraObjects List of extra Kubernetes objects to create
-  ## This can be used to add additional Kubernetes objects such as ConfigMaps, Secrets, or Custom Resources.
-  ## Example:
-  ## - apiVersion: isindir.github.com/v1alpha3
-  ##   kind: SopsSecret
-  ##   metadata:
-  ##     name: "{{ .Release.Name }}-sops-secret"
-  ##   spec:
-  ##     data:
-  ##       DB_STRING: ENC[AES256_GCM,data:******,iv:***,tag:***,type:str]
-  ##   sops: ...
+## @param extraObjects List of extra Kubernetes objects to create
+## This can be used to add additional Kubernetes objects such as ConfigMaps, Secrets, or Custom Resources.
+extraObjects:
+  # Tailscale serve configuration
+  - apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: tailscale-serve-config
+      namespace: "{{ .Release.Namespace }}"
+    data:
+      serve.json: |
+        {
+          "TCP": {
+            "443": {
+              "HTTPS": true
+            }
+          },
+          "Web": {
+            "{{ .Values.tailscale.hostname }}.{{ .Values.tailscale.domain }}:443": {
+              "Handlers": {
+                "/": {
+                  "Proxy": "http://127.0.0.1:{{ .Values.tailscale.proxyPort }}"
+                }
+              }
+            }
+          },
+          "AllowFunnel": {
+            "{{ .Values.tailscale.hostname }}.{{ .Values.tailscale.domain }}:443": true
+          }
+        }
+  # Tailscale state persistence
+  - apiVersion: v1
+    kind: PersistentVolumeClaim
+    metadata:
+      name: tailscale-state
+      namespace: "{{ .Release.Namespace }}"
+    spec:
+      accessModes:
+        - ReadWriteOnce
+      resources:
+        requests:
+          storage: "{{ .Values.tailscale.stateSize }}"
 
 
 ## @section Reliability configuration
@@ -733,12 +814,12 @@ rocket:
 service:
   ## @param service.type Service type
   ##
-  type: "LoadBalancer"
+  type: "ClusterIP"
   ## @param service.loadBalancerIP LoadBalancer IP address
   ## For Cilium LB-IPAM, specify an IP from your pool (e.g., 192.168.8.50-99)
   ## Leave empty to auto-assign from pool
   ##
-  loadBalancerIP: "192.168.8.55"
+  loadBalancerIP: ""
   ## @param service.annotations Additional annotations for the vaultwarden service
   ##
   annotations: {}

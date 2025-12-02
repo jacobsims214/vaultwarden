@@ -218,12 +218,12 @@ containers:
       failureThreshold: {{ .Values.startupProbe.failureThreshold }}
     {{- end }}
     {{- with .Values.sidecars }}
-    {{- toYaml . | nindent 2 }}
+    {{- tpl (toYaml .) $ | nindent 2 }}
     {{- end }}
 {{- if or (.Values.storage.existingVolumeClaim) (.Values.extraVolumes) }}
 volumes:
 {{- with .Values.extraVolumes }}
-{{- toYaml . | nindent 2 }}
+{{- tpl (toYaml .) $ | nindent 2 }}
 {{- end }}
 {{- with .Values.storage.existingVolumeClaim }}
   - name: vaultwarden-data
