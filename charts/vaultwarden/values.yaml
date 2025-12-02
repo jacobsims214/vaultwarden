@@ -793,11 +793,11 @@ smtp:
     ## @param smtp.username.value Username string for the SMTP authentication.
     ## Example: juan
     ##
-    value: "apikey"
+    value: ""
     ## @param smtp.username.existingSecretKey When using an existing secret, specify the key which contains the username.
     ## Example: SMTP_USERNAME
     ##
-    existingSecretKey: ""
+    existingSecretKey: "SMTP_USERNAME"
   ## Password for SMTP authentication.
   ## For SendGrid, this is your API key
   ##
