@@ -768,7 +768,7 @@ smtp:
   existingSecret: "vaultwarden-smtp"
   ## @param smtp.host SMTP host
   ##
-  host: "smtp.sendgrid.net"
+  host: "smtp.mailgun.org"
   ## @param smtp.security SMTP Encryption method
   ## Possible values:
   ##  - starttls: explicit TLS using ports 587 or 25
@@ -782,12 +782,12 @@ smtp:
   ## @param smtp.from SMTP sender email address
   ## Example: juan.delacruz@gmail.com
   ##
-  from: "notification@simstech.cloud"
+  from: "notifications@mail.simstech.cloud"
   ## @param smtp.fromName SMTP sender FROM
   ##
   fromName: "Vaultwarden"
   ## Username for SMTP authentication.
-  ## For SendGrid, username is always "apikey" (literal string)
+  ## For Mailgun, username is typically postmaster@yourdomain or your sending email
   ##
   username:
     ## @param smtp.username.value Username string for the SMTP authentication.
