@@ -530,9 +530,10 @@ eventsDayRetain: ""
 ##
 
 ## @param domain Domain name where the application is accessed
+## When using Tailscale Funnel, use your Tailscale hostname
 ## Example: https://warden.contoso.com:8443
 ##
-domain: "https://vault.simstech.cloud"
+domain: "https://vault.tail108d23.ts.net"
 
 ## @param sendsAllowed Controls whether users are allowed to create Bitwarden Sends.
 ##
