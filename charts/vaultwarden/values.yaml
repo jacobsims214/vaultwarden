@@ -250,17 +250,12 @@ startupProbe:
 ## @param resources Resource configurations
 ##
 resources:
-  {}
-  # We usually recommend not to specify default resources and to leave this as a conscious
-  # choice for the user. This also increases chances charts run on environments with little
-  # resources, such as Minikube. If you do want to specify resources, uncomment the following
-  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
-  # limits:
-  #   cpu: 300m
-  #   memory: 1Gi
-  # requests:
-  #   cpu: 50m
-  #   memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
 
 ## @param strategy Resource configurations
 ##
@@ -299,13 +294,10 @@ storage:
   ## @param storage.data Data directory configuration, refer to values.yaml for parameters.
   ##
   data:
-    {}
-    # name: "vaultwarden-data"
-    # size: "15Gi"
-    # class: ""
-    # path: "/data"
-    # keepPvc: false
-    # accessMode: "ReadWriteOnce"
+    name: "vaultwarden-data"
+    size: "10Gi"
+    path: "/data"
+    accessMode: "ReadWriteOnce"
 
   ## @param storage.attachments Attachments directory configuration, refer to values.yaml for parameters.
   ## By default, attachments/ is located inside the data directory.
@@ -330,7 +322,7 @@ database:
   ## @param database.type Database type, either mysql or postgresql
   ## Default is a sqlite database.
   ##
-  type: "default"
+  type: "postgresql"
   ## @param database.host Database hostname or IP address
   ##
   host: ""
@@ -351,10 +343,10 @@ database:
   uriOverride: ""
   ## @param database.existingSecret Name of an existing secret containing either a single key with the database uri, or a separate key for username and password
   ##
-  existingSecret: ""
+  existingSecret: "vault-psql-cluster-app"
   ## @param database.existingSecretKey Key in the existing secret
   ##
-  existingSecretKey: ""
+  existingSecretKey: "fqdn-uri"
   ## @param database.existingSecretUserKey Key in the existing secret
   ##
   existingSecretUserKey: username
@@ -435,7 +427,7 @@ eventsDayRetain: ""
 ## @param domain Domain name where the application is accessed
 ## Example: https://warden.contoso.com:8443
 ##
-domain: ""
+domain: "https://vault.simstech.cloud"
 
 ## @param sendsAllowed Controls whether users are allowed to create Bitwarden Sends.
 ##
@@ -473,7 +465,7 @@ trashAutoDeleteDays: ""
 ## of any of the restrictions above
 ##
 ## If signupDomains is set, then the value of signupsAllowed is ignored
-signupsAllowed: true
+signupsAllowed: false
 
 ## @param signupsVerify Whether to require account verification for newly-registered users.
 ##
@@ -741,12 +733,12 @@ rocket:
 service:
   ## @param service.type Service type
   ##
-  type: "ClusterIP"
+  type: "LoadBalancer"
   ## @param service.loadBalancerIP LoadBalancer IP address
   ## For Cilium LB-IPAM, specify an IP from your pool (e.g., 192.168.8.50-99)
   ## Leave empty to auto-assign from pool
   ##
-  loadBalancerIP: ""
+  loadBalancerIP: "192.168.8.55"
   ## @param service.annotations Additional annotations for the vaultwarden service
   ##
   annotations: {}
